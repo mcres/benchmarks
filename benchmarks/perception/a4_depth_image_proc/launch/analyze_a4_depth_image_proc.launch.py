@@ -760,8 +760,8 @@ def statistics(image_pipeline_msg_sets_ms, verbose=False):
     max_ = max_sets(image_pipeline_msg_sets_ms)
 
     indices = [i for i in range(
-                target_chain_dissambiguous.index("robotperf_benchmarks:robotperf_image_input_cb_fini (2)"),
-                1 + target_chain_dissambiguous.index("robotperf_benchmarks:robotperf_image_output_cb_init"),
+                target_chain_dissambiguous.index("robotperf_benchmarks:robotperf_image_input_cb_init"),
+                1 + target_chain_dissambiguous.index("robotperf_benchmarks:robotperf_pointcloud_output_cb_init"),
                 )
               ]
 
@@ -1003,8 +1003,8 @@ target_chain = [
     'robotperf_benchmarks:robotperf_image_input_cb_fini',
     # 'ros2:callback_end',
     # "ros2:callback_start",
-    'robotperf_benchmarks:robotperf_image_output_cb_init',
-    'robotperf_benchmarks:robotperf_image_output_cb_fini',
+    'robotperf_benchmarks:robotperf_pointcloud_output_cb_init',
+    'robotperf_benchmarks:robotperf_pointcloud_output_cb_fini',
     # "ros2:callback_end",
 ]
 
@@ -1014,12 +1014,12 @@ target_chain_dissambiguous = [
     "robotperf_benchmarks:robotperf_image_input_cb_fini",
     # "ros2:callback_end",
     # "ros2:callback_start (2)",
-    'robotperf_benchmarks:robotperf_image_input_cb_init (2)',
-    'robotperf_benchmarks:robotperf_image_input_cb_fini (2)',
+    'robotperf_benchmarks:robotperf_image_input_cb_init',
+    'robotperf_benchmarks:robotperf_image_input_cb_fini',
     # "ros2:callback_end (2)",
     # "ros2:callback_start (3)",
-    "robotperf_benchmarks:robotperf_image_output_cb_init",
-    "robotperf_benchmarks:robotperf_image_output_cb_fini",
+    "robotperf_benchmarks:robotperf_pointcloud_output_cb_init",
+    "robotperf_benchmarks:robotperf_pointcloud_output_cb_fini",
     # "ros2:callback_end (3)"
 ]
 target_chain_colors_fg = [
@@ -1103,7 +1103,7 @@ target_chain_marker = [
 # For some reason it seems to be displayed in the reverse order on the Y axis
 segment_types = ["rmw", "rcl", "rclcpp", "userland", "benchmark"]
 
-image_pipeline_msg_sets = msgsets_from_trace("/root/.ros/tracing/a4_depth_image_proc", True)
+image_pipeline_msg_sets = msgsets_from_trace("/home/martinho/.ros/tracing/a4_depth_image_proc", True)
 # image_pipeline_msg_sets = msgsets_from_trace("/tmp/benchmark_ws/src/benchmarks/trace_old/trace_cpu_ctf")
 # image_pipeline_msg_sets = msgsets_from_trace("/tmp/benchmark_ws/src/benchmarks/trace/trace_cpu_ctf", True)
 print(f'msg sets length: {len(image_pipeline_msg_sets)}')
