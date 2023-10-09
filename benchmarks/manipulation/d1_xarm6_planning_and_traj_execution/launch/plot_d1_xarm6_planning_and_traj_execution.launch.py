@@ -113,6 +113,51 @@ def plot_planning_and_traj_execution(argv):
             }
         )
 
+        ba.add_target(
+            {
+                "name": "robotcore_manipulation:robotcore_moveit2_traj_execution_cb_init",
+                "name_disambiguous": "robotcore_manipulation:robotcore_moveit2_traj_execution_cb_init",
+                "colors_fg": "yellow",
+                "colors_fg_bokeh": "salmon",
+                "layer": "traj execution",
+                "label_layer": 4,
+                "marker": "plus",
+            }
+        )
+        ba.add_target(
+            {
+                "name": "robotcore_manipulation:robotcore_moveit2_traj_execution_init",
+                "name_disambiguous": "robotcore_manipulation:robotcore_moveit2_traj_execution_init",
+                "colors_fg": "red",
+                "colors_fg_bokeh": "darksalmon",
+                "layer": "traj execution",
+                "label_layer": 4,
+                "marker": "plus",
+            }
+        )
+        ba.add_target(
+            {
+                "name": "robotcore_manipulation:robotcore_moveit2_traj_execution_fini",
+                "name_disambiguous": "robotcore_manipulation:robotcore_moveit2_traj_execution_fini",
+                "colors_fg": "red",
+                "colors_fg_bokeh": "lightcoral",
+                "layer": "traj execution",
+                "label_layer": 4,
+                "marker": "plus",
+            }
+        )
+        ba.add_target(
+            {
+                "name": "robotcore_manipulation:robotcore_moveit2_traj_execution_cb_fini",
+                "name_disambiguous": "robotcore_manipulation:robotcore_moveit2_traj_execution_cb_fini",
+                "colors_fg": "yellow",
+                "colors_fg_bokeh": "darkred",
+                "layer": "traj execution",
+                "label_layer": 4,
+                "marker": "plus",
+            }
+        )
+
     ba.draw_tracepoints(trace_path)
 
 def generate_launch_description():

@@ -1100,7 +1100,7 @@ class BenchmarkAnalyzer:
 
         # For some reason it seems to be displayed in the reverse order on the Y axis
         if self.hardware_device_type == "cpu":
-            segment_types = ["rmw", "rcl", "rclcpp", "planning"]
+            segment_types = ["rmw", "rcl", "rclcpp", "planning", "traj execution"]
         elif self.hardware_device_type == "fpga":
             segment_types = ["kernel", "rmw", "rcl", "rclcpp", "userland", "benchmark"]
 
@@ -1110,6 +1110,7 @@ class BenchmarkAnalyzer:
             y_range=segment_types,
             plot_width=2000,
             plot_height=600,
+            x_axis_type="log",  # Set x-axis to logarithmic scale
         )
         fig.title.align = "center"
         fig.title.text_font_size = "20px"
@@ -1127,6 +1128,7 @@ class BenchmarkAnalyzer:
         # draw durations
 
         ## filter op
+        target_chain_ns[0] += 1 
         callback_start = (target_chain_ns[0] - init_ns) / 1e6
         callback_end = (target_chain_ns[3] - init_ns) / 1e6
         duration = callback_end - callback_start
@@ -1136,10 +1138,25 @@ class BenchmarkAnalyzer:
                                     # should match with the
                                     # one from the callback_start
             [(callback_start, callback_start + duration, duration)],
-            "limegreen",
+            "khaki",
+        )
+
+        ## filter op
+        callback_start = (target_chain_ns[4] - init_ns) / 1e6
+        callback_end = (target_chain_ns[7] - init_ns) / 1e6
+        duration = callback_end - callback_start
+        self.add_durations_to_figure(
+            fig,
+            self.target_chain_layer[4],  # index used in here
+                                    # should match with the
+                                    # one from the callback_start
+            [(callback_start, callback_start + duration, duration)],
+            "darkkhaki",
         )
 
         for msg_index in range(len(msg_set)):
+            if msg_index not in [0,3,4,7]:
+                continue
             #     self.add_markers_to_figure(fig, msg_set[msg_index].event.name, [(target_chain_ns[msg_index] - init_ns)/1e6], 'blue', marker_type='plus', legend_label='timing')
             # print("marker ms: " + str((target_chain_ns[msg_index] - init_ns) / 1e6))
             self.add_markers_to_figure(
@@ -1169,8 +1186,8 @@ class BenchmarkAnalyzer:
         fig.add_layout(new_legend, "right")
         
         ## output
-        # show(fig)  # show in browser    
-        export_png(fig, filename="/tmp/analysis/plot_trace_d1.png")
+        show(fig)  # show in browser    
+        # export_png(fig, filename="/tmp/analysis/plot_trace_d1.png")
 
     def traces_id_d7(self, msg_set):
         # this method only works for hardcoded traces, specifically for the a1 benchmark
