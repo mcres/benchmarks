@@ -1101,7 +1101,32 @@ class BenchmarkAnalyzer:
 
         # For some reason it seems to be displayed in the reverse order on the Y axis
         if self.hardware_device_type == "cpu":
-            segment_types = ["rmw", "rcl", "rclcpp", "planning", "traj execution", "control"]
+            segment_types = [
+                "rmw", 
+                "rcl", 
+                "rclcpp", 
+                "tf2",
+                "planning", 
+                "inverse kinematics", 
+                "collision checking", 
+                "direct kinematics", 
+                "control", 
+                "traj execution", 
+            ]
+
+            colors = {
+                # "rmw": ""
+                # "rcl": ""
+                # "rclcpp": ""
+                "tf2": "#6B6D76",
+                "planning": "#A69888",
+                "inverse kinematics": "#D1ACA0",
+                "collision checking": "#FCBFB7",
+                "direct kinematics": "#334E58",
+                "control": "#333A3B",
+                "traj execution": "#33261D"
+            }
+
         elif self.hardware_device_type == "fpga":
             segment_types = ["kernel", "rmw", "rcl", "rclcpp", "userland", "benchmark"]
 
@@ -1110,7 +1135,7 @@ class BenchmarkAnalyzer:
             x_axis_label=f"Milliseconds",
             y_range=segment_types,
             plot_width=2000,
-            plot_height=600,
+            plot_height=1000,
         )
         fig.title.align = "center"
         fig.title.text_font_size = "20px"
@@ -1140,7 +1165,7 @@ class BenchmarkAnalyzer:
 
         ## planning and trajectory execution
         self.target_chain = target_chain_planning_and_traj_execution
-        plan_and_traj_execution_msg_sets = self.msgsets_from_trace(trace_path, True)
+        plan_and_traj_execution_msg_sets = self.msgsets_from_trace(trace_path, False)
         index_to_plot = len(plan_and_traj_execution_msg_sets) // 2
         msg_set = plan_and_traj_execution_msg_sets[index_to_plot]
         init_ns = msg_set[0].default_clock_snapshot.ns_from_origin
@@ -1158,7 +1183,7 @@ class BenchmarkAnalyzer:
             fig,
             "planning",
             [(callback_start, callback_start + duration, duration)],
-            "red",
+            colors["planning"],
         )
     
         callback_start = (target_chain_ns[4] - init_ns) / 1e6
@@ -1168,7 +1193,7 @@ class BenchmarkAnalyzer:
             fig,
             "traj execution",
             [(callback_start, callback_start + duration, duration)],
-            "green",
+            colors["traj execution"],
         )
 
 
@@ -1181,7 +1206,7 @@ class BenchmarkAnalyzer:
         ]
 
         self.target_chain = target_chain_control
-        control_msg_sets = self.msgsets_from_trace(trace_path, True)
+        control_msg_sets = self.msgsets_from_trace(trace_path, False)
         print(f"Length of control_msg_sets_in_timerange before {len(control_msg_sets)}")
         control_msg_sets_in_timerange = []
         # Take msg sets within time range
@@ -1199,9 +1224,135 @@ class BenchmarkAnalyzer:
                 fig,
                 "control",
                 [(callback_start, callback_start + duration, duration)],
-                "yellow",
+                colors["control"],
+            )
+
+        # collision checking
+        target_chain_collision_checking = [
+            "robotcore_manipulation:robotcore_moveit2_fcl_check_robot_collision_cb_init",       # 0
+            "robotcore_manipulation:robotcore_moveit2_fcl_check_robot_collision_init",          # 1
+            "robotcore_manipulation:robotcore_moveit2_fcl_check_robot_collision_fini",          # 2
+            "robotcore_manipulation:robotcore_moveit2_fcl_check_robot_collision_cb_fini",       # 3
+            "robotcore_manipulation:robotcore_moveit2_fcl_check_self_collision_cb_init",        # 4
+            "robotcore_manipulation:robotcore_moveit2_fcl_check_self_collision_init",           # 5
+            "robotcore_manipulation:robotcore_moveit2_fcl_check_self_collision_fini",           # 6
+            "robotcore_manipulation:robotcore_moveit2_fcl_check_self_collision_cb_fini"         # 7
+        ]
+
+        self.target_chain = target_chain_collision_checking
+        collision_checking_msg_sets = self.msgsets_from_trace(trace_path, False)
+        print(f"Length of collision_checking_msg_sets_in_timerange before {len(collision_checking_msg_sets)}")
+        collision_checking_msg_sets_in_timerange = []
+        # Take msg sets within time range
+        for collision_checking_set in collision_checking_msg_sets:
+            if collision_checking_set[0].default_clock_snapshot.ns_from_origin > init_ns and collision_checking_set[-1].default_clock_snapshot.ns_from_origin < fini_ns:
+                collision_checking_msg_sets_in_timerange.append(collision_checking_set)
+        print(f"Length of collision_checking_msg_sets_in_timerange after {len(collision_checking_msg_sets_in_timerange)}")
+
+
+        for collision_checking_set in collision_checking_msg_sets_in_timerange:
+            callback_start = (collision_checking_set[0].default_clock_snapshot.ns_from_origin - init_ns) / 1e6
+            callback_end = (collision_checking_set[3].default_clock_snapshot.ns_from_origin - init_ns) / 1e6
+            duration = callback_end - callback_start
+            self.add_durations_to_figure(
+                fig,
+                "collision checking",
+                [(callback_start, callback_start + duration, duration)],
+                colors["collision checking"],
+            )
+
+        # direct kinematics
+        target_chain_direct_kinematics = [
+            "robotcore_manipulation:robotcore_moveit2_direct_kinematics_cb_init",       # 0
+            "robotcore_manipulation:robotcore_moveit2_direct_kinematics_init",          # 1
+            "robotcore_manipulation:robotcore_moveit2_direct_kinematics_fini",          # 2
+            "robotcore_manipulation:robotcore_moveit2_direct_kinematics_cb_fini",       # 3
+        ]
+
+        self.target_chain = target_chain_direct_kinematics
+        direct_kinematics_msg_sets = self.msgsets_from_trace(trace_path, False)
+        print(f"Length of direct_kinematics_msg_sets_in_timerange before {len(direct_kinematics_msg_sets)}")
+        direct_kinematics_msg_sets_in_timerange = []
+        # Take msg sets within time range
+        for direct_kinematics_set in direct_kinematics_msg_sets:
+            if direct_kinematics_set[0].default_clock_snapshot.ns_from_origin > init_ns and direct_kinematics_set[-1].default_clock_snapshot.ns_from_origin < fini_ns:
+                direct_kinematics_msg_sets_in_timerange.append(direct_kinematics_set)
+        print(f"Length of direct_kinematics_msg_sets_in_timerange after {len(direct_kinematics_msg_sets_in_timerange)}")
+
+
+        for direct_kinematics_set in direct_kinematics_msg_sets_in_timerange:
+            callback_start = (direct_kinematics_set[0].default_clock_snapshot.ns_from_origin - init_ns) / 1e6
+            callback_end = (direct_kinematics_set[3].default_clock_snapshot.ns_from_origin - init_ns) / 1e6
+            duration = callback_end - callback_start
+            self.add_durations_to_figure(
+                fig,
+                "direct kinematics",
+                [(callback_start, callback_start + duration, duration)],
+                colors["direct kinematics"],
+            )
+
+        # inverse kinematics
+        target_chain_inverse_kinematics = [
+            "robotcore_manipulation:robotcore_moveit2_inverse_kinematics_kdl_cb_init",       # 0
+            "robotcore_manipulation:robotcore_moveit2_inverse_kinematics_kdl_init",          # 1
+            "robotcore_manipulation:robotcore_moveit2_inverse_kinematics_kdl_fini",          # 2
+            "robotcore_manipulation:robotcore_moveit2_inverse_kinematics_kdl_cb_fini",       # 3
+        ]
+
+        self.target_chain = target_chain_inverse_kinematics
+        inverse_kinematics_msg_sets = self.msgsets_from_trace(trace_path, False)
+        print(f"Length of inverse_kinematics_msg_sets_in_timerange before {len(inverse_kinematics_msg_sets)}")
+        inverse_kinematics_msg_sets_in_timerange = []
+        # Take msg sets within time range
+        for inverse_kinematics_set in inverse_kinematics_msg_sets:
+            if inverse_kinematics_set[0].default_clock_snapshot.ns_from_origin > init_ns and inverse_kinematics_set[-1].default_clock_snapshot.ns_from_origin < fini_ns:
+                inverse_kinematics_msg_sets_in_timerange.append(inverse_kinematics_set)
+        print(f"Length of inverse_kinematics_msg_sets_in_timerange after {len(inverse_kinematics_msg_sets_in_timerange)}")
+
+
+        for inverse_kinematics_set in inverse_kinematics_msg_sets_in_timerange:
+            callback_start = (inverse_kinematics_set[0].default_clock_snapshot.ns_from_origin - init_ns) / 1e6
+            callback_end = (inverse_kinematics_set[3].default_clock_snapshot.ns_from_origin - init_ns) / 1e6
+            duration = callback_end - callback_start
+            self.add_durations_to_figure(
+                fig,
+                "inverse kinematics",
+                [(callback_start, callback_start + duration, duration)],
+                colors["inverse kinematics"],
+            )
+
+        # tf2
+        target_chain_tf2 = [
+            # "robotperf_benchmarks:robotcore_tf2_lookup_cb_init",
+            # "robotperf_benchmarks:robotcore_tf2_lookup_cb_fini",
+            "robotperf_benchmarks:robotcore_tf2_set_cb_init",
+            "robotperf_benchmarks:robotcore_tf2_set_cb_fini",
+        ]
+
+        self.target_chain = target_chain_tf2
+        tf2_msg_sets = self.msgsets_from_trace(trace_path, False)
+        print(f"Length of tf2_msg_sets_in_timerange before {len(tf2_msg_sets)}")
+        tf2_msg_sets_in_timerange = []
+        # Take msg sets within time range
+        for tf2_set in tf2_msg_sets:
+            if tf2_set[0].default_clock_snapshot.ns_from_origin > init_ns and tf2_set[-1].default_clock_snapshot.ns_from_origin < fini_ns:
+                tf2_msg_sets_in_timerange.append(tf2_set)
+        print(f"Length of tf2_msg_sets_in_timerange after {len(tf2_msg_sets_in_timerange)}")
+
+
+        for tf2_set in tf2_msg_sets_in_timerange:
+            callback_start = (tf2_set[0].default_clock_snapshot.ns_from_origin - init_ns) / 1e6
+            callback_end = (tf2_set[1].default_clock_snapshot.ns_from_origin - init_ns) / 1e6
+            duration = callback_end - callback_start
+            self.add_durations_to_figure(
+                fig,
+                "tf2",
+                [(callback_start, callback_start + duration, duration)],
+                colors["tf2"],
             )
         
+
+        # Remove markers for the moment
 
         # for msg_index in range(len(msg_set)):
         #     #     self.add_markers_to_figure(fig, msg_set[msg_index].event.name, [(target_chain_ns[msg_index] - init_ns)/1e6], 'blue', marker_type='plus', legend_label='timing')
