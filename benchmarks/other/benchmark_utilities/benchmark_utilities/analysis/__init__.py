@@ -664,6 +664,7 @@ class BenchmarkAnalyzer:
         """
         # Create a trace collection message iterator from the first command-line
         # argument.
+        print(f"msgsets_from_trace: {tracename}")
         msg_it = bt2.TraceCollectionMessageIterator(tracename)
 
         # Iterate the trace messages and pick ros2 ones
@@ -1094,13 +1095,13 @@ class BenchmarkAnalyzer:
         # show(fig)  # show in browser    
         export_png(fig, filename="/tmp/analysis/plot_trace_a1.png")
 
-    def traces_id_d1(self, msg_set):
+    def traces_id_d1(self, trace_path="/home/martinho/.ros/tracing/d1_xarm6_planning_and_traj_execution"):
         # this method only works for hardcoded traces, specifically for the a1 benchmark
         # TODO: make this function generic so other benchmarks can also be plotted 
 
         # For some reason it seems to be displayed in the reverse order on the Y axis
         if self.hardware_device_type == "cpu":
-            segment_types = ["rmw", "rcl", "rclcpp", "planning"]
+            segment_types = ["rmw", "rcl", "rclcpp", "planning", "traj execution", "control"]
         elif self.hardware_device_type == "fpga":
             segment_types = ["kernel", "rmw", "rcl", "rclcpp", "userland", "benchmark"]
 
@@ -1119,58 +1120,128 @@ class BenchmarkAnalyzer:
         fig.xaxis[0].axis_label_text_font_size = "30px"
         fig.yaxis[0].major_label_text_font_size = "25px"
 
+        target_chain_planning_and_traj_execution = [
+            "robotcore_manipulation:robotcore_moveit2_planning_cb_init",        # 0
+            "robotcore_manipulation:robotcore_moveit2_planning_init",           # 1
+            "robotcore_manipulation:robotcore_moveit2_planning_fini",           # 2
+            "robotcore_manipulation:robotcore_moveit2_planning_cb_fini",        # 3
+            "robotcore_manipulation:robotcore_moveit2_traj_execution_cb_init",  # 4
+            "robotcore_manipulation:robotcore_moveit2_traj_execution_init",     # 5
+            "robotcore_manipulation:robotcore_moveit2_traj_execution_fini",     # 6
+            "robotcore_manipulation:robotcore_moveit2_traj_execution_cb_fini"   # 7
+        ]
+
+        target_chain_control = [
+            "robotcore_control:robotcore_control_joint_trajectory_controller_cb_init",  # 0
+            "robotcore_control:robotcore_control_joint_trajectory_controller_init",     # 1
+            "robotcore_control:robotcore_control_joint_trajectory_controller_fini",     # 2
+            "robotcore_control:robotcore_control_joint_trajectory_controller_cb_fini"   # 3
+        ]
+
+        ## planning and trajectory execution
+        self.target_chain = target_chain_planning_and_traj_execution
+        plan_and_traj_execution_msg_sets = self.msgsets_from_trace(trace_path, True)
+        index_to_plot = len(plan_and_traj_execution_msg_sets) // 2
+        msg_set = plan_and_traj_execution_msg_sets[index_to_plot]
+        init_ns = msg_set[0].default_clock_snapshot.ns_from_origin
+        fini_ns = msg_set[-1].default_clock_snapshot.ns_from_origin
+
         target_chain_ns = []
         for msg_index in range(len(msg_set)):
             target_chain_ns.append(msg_set[msg_index].default_clock_snapshot.ns_from_origin)
         init_ns = target_chain_ns[0]
 
-        # draw durations
-
-        ## filter op
         callback_start = (target_chain_ns[0] - init_ns) / 1e6
         callback_end = (target_chain_ns[3] - init_ns) / 1e6
         duration = callback_end - callback_start
         self.add_durations_to_figure(
             fig,
-            self.target_chain_layer[0],  # index used in here
-                                    # should match with the
-                                    # one from the callback_start
+            "planning",
             [(callback_start, callback_start + duration, duration)],
-            "limegreen",
+            "red",
+        )
+    
+        callback_start = (target_chain_ns[4] - init_ns) / 1e6
+        callback_end = (target_chain_ns[7] - init_ns) / 1e6
+        duration = callback_end - callback_start
+        self.add_durations_to_figure(
+            fig,
+            "traj execution",
+            [(callback_start, callback_start + duration, duration)],
+            "green",
         )
 
-        for msg_index in range(len(msg_set)):
-            #     self.add_markers_to_figure(fig, msg_set[msg_index].event.name, [(target_chain_ns[msg_index] - init_ns)/1e6], 'blue', marker_type='plus', legend_label='timing')
-            # print("marker ms: " + str((target_chain_ns[msg_index] - init_ns) / 1e6))
-            self.add_markers_to_figure(
+
+        # control
+        target_chain_control = [
+            "robotcore_control:robotcore_control_joint_trajectory_controller_cb_init",  # 0
+            "robotcore_control:robotcore_control_joint_trajectory_controller_init",     # 1
+            "robotcore_control:robotcore_control_joint_trajectory_controller_fini",     # 2
+            "robotcore_control:robotcore_control_joint_trajectory_controller_cb_fini"   # 3
+        ]
+
+        self.target_chain = target_chain_control
+        control_msg_sets = self.msgsets_from_trace(trace_path, True)
+        print(f"init_ns: {init_ns}")
+        print(f"fini_ns: {fini_ns}")
+        print(f"Length of control_msg_sets_in_timerange before {len(control_msg_sets)}")
+        control_msg_sets_in_timerange = []
+        # Take msg sets within time range
+        for control_set in control_msg_sets:
+            if control_set[-1].default_clock_snapshot.ns_from_origin > init_ns or control_set[0].default_clock_snapshot.ns_from_origin < fini_ns:
+                control_msg_sets_in_timerange.append(control_set)
+        print(f"Length of control_msg_sets_in_timerange after {len(control_msg_sets_in_timerange)}")
+
+        # Plot all the control msg sets
+        target_chain_ns = []
+        for msg_index in range(len(control_msg_sets_in_timerange)):
+            target_chain_ns.append(control_msg_sets_in_timerange[0][msg_index].default_clock_snapshot.ns_from_origin)
+
+        for control_set in control_msg_sets_in_timerange:
+            callback_start = (target_chain_ns[0] - init_ns) / 1e6
+            callback_end = (target_chain_ns[3] - init_ns) / 1e6
+            duration = callback_end - callback_start
+            self.add_durations_to_figure(
                 fig,
-                self.target_chain_layer[msg_index],
-                [(target_chain_ns[msg_index] - init_ns) / 1e6],
-                self.target_chain_colors_fg_bokeh[msg_index],
-                marker_type=self.target_chain_marker[msg_index],
-                # legend_label=msg_set[msg_index].event.name,
-                legend_label=self.target_chain_dissambiguous[msg_index],
-                size=10,
-            )        
-            label = Label(
-                x=(target_chain_ns[msg_index] - init_ns) / 1e6,
-                y=self.target_chain_label_layer[msg_index],
-                x_offset=-30,
-                y_offset=-30,
-                # text=self.target_chain_dissambiguous[msg_index].split(":")[-1],
-                text="",
+                "control",
+                [(callback_start, callback_start + duration, duration)],
+                "yellow",
             )
-            fig.add_layout(label)
+
+        
+
+        # for msg_index in range(len(msg_set)):
+        #     #     self.add_markers_to_figure(fig, msg_set[msg_index].event.name, [(target_chain_ns[msg_index] - init_ns)/1e6], 'blue', marker_type='plus', legend_label='timing')
+        #     # print("marker ms: " + str((target_chain_ns[msg_index] - init_ns) / 1e6))
+        #     self.add_markers_to_figure(
+        #         fig,
+        #         self.target_chain_layer[msg_index],
+        #         [(target_chain_ns[msg_index] - init_ns) / 1e6],
+        #         self.target_chain_colors_fg_bokeh[msg_index],
+        #         marker_type=self.target_chain_marker[msg_index],
+        #         # legend_label=msg_set[msg_index].event.name,
+        #         legend_label=self.target_chain_dissambiguous[msg_index],
+        #         size=10,
+        #     )        
+        #     label = Label(
+        #         x=(target_chain_ns[msg_index] - init_ns) / 1e6,
+        #         y=self.target_chain_label_layer[msg_index],
+        #         x_offset=-30,
+        #         y_offset=-30,
+        #         # text=self.target_chain_dissambiguous[msg_index].split(":")[-1],
+        #         text="",
+        #     )
+        #     fig.add_layout(label)
 
         # hack legend to the right
-        fig.legend.location = "right"
-        new_legend = fig.legend[0]
-        fig.legend[0] = None
-        fig.add_layout(new_legend, "right")
+        # fig.legend.location = "right"
+        # new_legend = fig.legend[0]
+        # fig.legend[0] = None
+        # fig.add_layout(new_legend, "right")
         
         ## output
-        # show(fig)  # show in browser    
-        export_png(fig, filename="/tmp/analysis/plot_trace_d1.png")
+        show(fig)  # show in browser    
+        # export_png(fig, filename="/tmp/analysis/plot_trace_d1.png")
 
     def traces_id_d7(self, msg_set):
         # this method only works for hardcoded traces, specifically for the a1 benchmark
@@ -3167,10 +3238,10 @@ class BenchmarkAnalyzer:
             msg_set = self.image_pipeline_msg_sets[self.index_to_plot]
             self.traces_fpga(msg_set)
         elif self.benchmark_name == "d1_xarm6_planning_and_traj_execution":
-            self.image_pipeline_msg_sets = self.msgsets_from_trace(d7_trace_path, True)
-            index_to_plot = len(self.image_pipeline_msg_sets) // 2
-            msg_set = self.image_pipeline_msg_sets[index_to_plot]
-            self.traces_id_d1(msg_set)
+            # self.image_pipeline_msg_sets = self.msgsets_from_trace(d7_trace_path, True)
+            # index_to_plot = len(self.image_pipeline_msg_sets) // 2
+            # msg_set = self.image_pipeline_msg_sets[index_to_plot]
+            self.traces_id_d1()
         elif self.benchmark_name == "d7_dual_arm_static_avoidance":
             self.image_pipeline_msg_sets = self.msgsets_from_trace_no_vpid(d7_trace_path, True)
             index_to_plot = len(self.image_pipeline_msg_sets) // 2
