@@ -1182,24 +1182,18 @@ class BenchmarkAnalyzer:
 
         self.target_chain = target_chain_control
         control_msg_sets = self.msgsets_from_trace(trace_path, True)
-        print(f"init_ns: {init_ns}")
-        print(f"fini_ns: {fini_ns}")
         print(f"Length of control_msg_sets_in_timerange before {len(control_msg_sets)}")
         control_msg_sets_in_timerange = []
         # Take msg sets within time range
         for control_set in control_msg_sets:
-            if control_set[-1].default_clock_snapshot.ns_from_origin > init_ns or control_set[0].default_clock_snapshot.ns_from_origin < fini_ns:
+            if control_set[0].default_clock_snapshot.ns_from_origin > init_ns and control_set[-1].default_clock_snapshot.ns_from_origin < fini_ns:
                 control_msg_sets_in_timerange.append(control_set)
         print(f"Length of control_msg_sets_in_timerange after {len(control_msg_sets_in_timerange)}")
 
-        # Plot all the control msg sets
-        target_chain_ns = []
-        for msg_index in range(len(control_msg_sets_in_timerange)):
-            target_chain_ns.append(control_msg_sets_in_timerange[0][msg_index].default_clock_snapshot.ns_from_origin)
 
         for control_set in control_msg_sets_in_timerange:
-            callback_start = (target_chain_ns[0] - init_ns) / 1e6
-            callback_end = (target_chain_ns[3] - init_ns) / 1e6
+            callback_start = (control_set[0].default_clock_snapshot.ns_from_origin - init_ns) / 1e6
+            callback_end = (control_set[3].default_clock_snapshot.ns_from_origin - init_ns) / 1e6
             duration = callback_end - callback_start
             self.add_durations_to_figure(
                 fig,
@@ -1207,7 +1201,6 @@ class BenchmarkAnalyzer:
                 [(callback_start, callback_start + duration, duration)],
                 "yellow",
             )
-
         
 
         # for msg_index in range(len(msg_set)):
