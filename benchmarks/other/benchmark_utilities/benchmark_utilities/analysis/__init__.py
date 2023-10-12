@@ -1338,8 +1338,8 @@ class BenchmarkAnalyzer:
             )
         
         ## output
-        show(fig)  # show in browser    
-        # export_png(fig, filename="/tmp/analysis/plot_trace_d1.png")
+        # show(fig)  # show in browser    
+        export_png(fig, filename="/tmp/analysis/plot_trace_d1.png")
 
     def traces_id_d7(self, msg_set):
         # this method only works for hardcoded traces, specifically for the a1 benchmark
